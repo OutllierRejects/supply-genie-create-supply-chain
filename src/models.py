@@ -1,44 +1,92 @@
 from typing import List, Union, Optional
-from typing_extensions import TypedDict, NotRequired
-
-from pydantic import BaseModel, Field, HttpUrl
-
-
-class CreateChainState(TypedDict):
-    session_id: str
-    raw_input: dict
-    esg_preference: NotRequired[str]
-    suppliers: list
-    exploration_results: list
-    evaluation_feedback: str
-    final_report: dict
-    retry_count: NotRequired[int]
+from pydantic import BaseModel, Field
 
 
 class Supplier(BaseModel):
-    name: str
-    score: float
-    reasons: str
-    price: float
-    currency: Optional[str]
-    unit: Optional[str]
-    delivery_time: str
-    url: Optional[HttpUrl]
+    company_name: str = Field(description="Name of the company")
+    location: str = Field(description="Location of the company")
+    rating: float = Field(description="Rating of the company")
+    price_range: str = Field(description="Price range of the products")
+    lead_time: str = Field(description="Lead time for delivery")
+    moq: str = Field(description="Minimum order quantity")
+    certifications: List[str] = Field(description="List of certifications")
+    specialties: List[str] = Field(description="List of specialties")
+    response_time: str = Field(description="Response time")
+    contact: Optional[str] = Field(default=None, description="Contact information")
 
 
-class SuccessReport(BaseModel):
-    status: str = Field("success", const=True)
-    top_suppliers: List[Supplier] = Field(..., min_items=1)
-    evaluation_feedback: str
-    evaluation_model: str
+class SupplierSearchIndexQuery(BaseModel):
+    price_range: str = Field(description="Price range of the products")
+    location: str = Field(description="Location of the company")
+    specialties: List[str] = Field(description="List of specialties")
+    certifications: List[str] = Field(description="List of certifications")
+    lead_time: str = Field(description="Lead time for delivery")
+
+    def build_filter(self) -> dict[str, Union[str, List[str]]]:
+        filter = {}
+        if self.price_range:
+            filter["price_range"] = self.price_range
+        if self.location:
+            filter["location"] = self.location
+        if self.specialties:
+            filter["specialties"] = {"$all": self.specialties}
+        if self.certifications:
+            filter["certifications"] = {"$all": self.certifications}
+        if self.lead_time:
+            filter["lead_time"] = self.lead_time
+        return filter
 
 
-class FailureReport(BaseModel):
-    status: str = Field("failed", const=True)
-    message: str
+class AgentConfig(BaseModel):
+    query: str = Field(
+        description="The query string to search for suppliers.",
+        min_length=1,
+        max_length=500,
+    )
+    chat_history: Optional[List[dict]] = Field(
+        default=None,
+        description="Optional chat history to provide context for the search.",
+    )
 
 
-FinalReport = Union[SuccessReport, FailureReport]
+class SupplierExplorationAgentResponse(BaseModel):
+    suppliers: List[Supplier] = Field(
+        description="List of suppliers matching the search criteria."
+    )
 
-# Tools Configuration
 
+class RequirementAnalysisResponse(BaseModel):
+    required_material: str = Field(description="The primary material required.")
+    region: Optional[str] = Field(
+        default=None, description="The geographical region of interest."
+    )
+    price_range: Optional[str] = Field(
+        default=None, description="Acceptable price range for the material."
+    )
+    specialties: Optional[List[str]] = Field(
+        default=None,
+        description="Specific processing or manufacturing specialties required.",
+    )
+    certifications: Optional[List[str]] = Field(
+        default=None, description="Required certifications for suppliers."
+    )
+    lead_time: Optional[str] = Field(
+        default=None, description="Acceptable lead time for delivery."
+    )
+    additional_details: Optional[str] = Field(
+        default=None, description="Any other relevant details or requirements."
+    )
+
+
+class WebSearchQuery(BaseModel):
+    query: str = Field(
+        description="The query string to search for suppliers.",
+        min_length=1,
+        max_length=500,
+    )
+
+
+class WebExtractQuery(BaseModel):
+    urls: List[str] = Field(
+        description="List of URLs to extract supplier information from."
+    )
