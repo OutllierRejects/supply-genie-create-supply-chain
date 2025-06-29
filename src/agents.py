@@ -14,7 +14,7 @@ from .prompts import get_supply_chain_agent_prompt
 logger = get_logger()
 
 
-def supply_chain_agent() -> CompiledStateGraph:
+def supply_chain_agent(chat_history=None) -> CompiledStateGraph:
     f"""
     Comprehensive supply chain agent that handles requirement analysis and supplier exploration.
     Designed to find EXACTLY {AGENT_MAX_SUPPLIERS} high-quality suppliers through thorough research.
@@ -45,7 +45,7 @@ def supply_chain_agent() -> CompiledStateGraph:
         agent = create_react_agent(
             model=model,
             tools=tools,
-            prompt=get_supply_chain_agent_prompt(),
+            prompt=get_supply_chain_agent_prompt(chat_history),
             response_format=SupplierExplorationAgentResponse,
         )
         logger.info("Successfully created supply chain agent with ReAct framework")

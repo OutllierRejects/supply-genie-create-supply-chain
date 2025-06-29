@@ -51,8 +51,8 @@ async def get_recommendations(requirements: AgentConfig):
 
     try:
         logger.info("--- CREATING SUPPLY CHAIN AGENT ---")
-        # Create and invoke the supply chain agent
-        agent = supply_chain_agent()
+        # Create and invoke the supply chain agent with chat history
+        agent = supply_chain_agent(chat_history=requirements.chat_history)
         logger.info("Supply chain agent created successfully")
 
         # Configure agent with recursion limit

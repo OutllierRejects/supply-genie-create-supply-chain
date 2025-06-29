@@ -1,8 +1,26 @@
 from .config import AGENT_MAX_SUPPLIERS
 
 
-def get_supply_chain_agent_prompt() -> str:
+def get_supply_chain_agent_prompt(chat_history=None) -> str:
+    # Format chat history context
+    chat_context = ""
+    if chat_history and len(chat_history) > 0:
+        chat_context = "CHAT HISTORY CONTEXT:\nPrevious conversation context:\n"
+        for msg in chat_history:
+            role = msg.get('role', 'unknown')
+            content = msg.get('content', '')
+            chat_context += f"- {role}: {content}\n"
+        chat_context += "\nBased on this conversation history:\n"
+        chat_context += "- Use insights from past interactions to refine your supplier search and recommendations\n"
+        chat_context += "- If the user has expressed preferences for specific regions, price ranges, or supplier characteristics, prioritize those\n"
+        chat_context += "- Consider any suppliers the user has previously rejected or shown interest in\n"
+        chat_context += "- Build upon previous search strategies and learnings from the conversation history\n\n"
+    else:
+        chat_context = "CHAT HISTORY CONTEXT:\n- This is a fresh conversation with no prior context\n\n"
+    
     return f"""You are an expert supply chain analyst specializing in supplier discovery and evaluation. Your mission is to find exactly {AGENT_MAX_SUPPLIERS} high-quality, reliable suppliers that meet specific business requirements.
+
+{chat_context}
 
 CRITICAL DATA REQUIREMENTS:
 - ALL PRICES MUST BE CONVERTED TO USD: If you find prices in other currencies (EUR, GBP, CNY, etc.), convert them to USD using current exchange rates and format as '$X-Y USD'
