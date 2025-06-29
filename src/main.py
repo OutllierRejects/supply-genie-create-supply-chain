@@ -117,8 +117,8 @@ async def get_recommendations(requirements: AgentConfig):
 
     except Exception as e:
         logger.error(
-            f"Error processing recommendation request: {str(e)}", exc_info=True
+            "Error processing recommendation request: {}", str(e), exc_info=True
         )
-        logger.error(f"Error type: {type(e).__name__}")
+        logger.error("Error type: {}", type(e).__name__)
         logger.error("=== REQUEST FAILED ===")
         return SupplierExplorationAgentResponse(suppliers=[])
