@@ -68,4 +68,60 @@ def create_search_index_if_not_exists() -> None:
         )
 
 
+def save_suppliers_to_mongodb(suppliers: list) -> dict:
+    """
+    Save suppliers to MongoDB for future retrieval and analysis.
+    
+    Args:
+        suppliers: List of supplier dictionaries or objects
+        
+    Returns:
+        dict: Result of the save operation
+    """
+    try:
+        logger.info(f"Saving {len(suppliers)} suppliers to MongoDB")
+        
+        # Get database and collection
+        db, collection = get_supplier_db_and_collection()
+        
+        # Ensure search index exists
+        create_search_index_if_not_exists()
+        
+        # Convert suppliers to dictionaries if they're Pydantic models
+        supplier_dicts = []
+        for supplier in suppliers:
+            if hasattr(supplier, 'dict'):
+                # Pydantic model
+                supplier_dict = supplier.dict()
+            elif hasattr(supplier, '__dict__'):
+                # Regular object
+                supplier_dict = supplier.__dict__
+            else:
+                # Already a dict
+                supplier_dict = supplier
+            
+            supplier_dicts.append(supplier_dict)
+        
+        if supplier_dicts:
+            # Insert suppliers into MongoDB
+            result = collection.insert_many(supplier_dicts)
+            logger.info(f"Successfully saved {len(result.inserted_ids)} suppliers to MongoDB")
+            return {
+                "success": True,
+                "inserted_count": len(result.inserted_ids),
+                "inserted_ids": [str(id) for id in result.inserted_ids]
+            }
+        else:
+            logger.warning("No suppliers to save")
+            return {"success": True, "inserted_count": 0, "message": "No suppliers to save"}
+            
+    except Exception as e:
+        logger.error(f"Error saving suppliers to MongoDB: {str(e)}", exc_info=True)
+        return {
+            "success": False,
+            "error": str(e),
+            "inserted_count": 0
+        }
+
+
 # TODO: Timer Logger Decorator

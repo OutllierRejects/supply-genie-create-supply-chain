@@ -6,9 +6,17 @@ from .utils import get_logger, save_suppliers_to_mongodb
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from .config import AGENT_RECURSION_LIMIT
+from fastapi.middleware.cors import CORSMiddleware
 
 logger = get_logger()
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")

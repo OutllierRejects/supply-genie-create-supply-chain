@@ -44,10 +44,9 @@ def supply_chain_agent() -> CompiledStateGraph:
         logger.info("Creating ReAct agent with tools and prompt...")
         agent = create_react_agent(
             model=model,
-            prompt=get_supply_chain_agent_prompt(),
             tools=tools,
+            prompt=get_supply_chain_agent_prompt(),
             response_format=SupplierExplorationAgentResponse,
-            name="supply_chain_agent",
         )
         logger.info("Successfully created supply chain agent with ReAct framework")
         logger.debug(
