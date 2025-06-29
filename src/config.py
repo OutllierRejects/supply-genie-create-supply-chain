@@ -23,7 +23,7 @@ DEFAULT_REMAINING_STEPS = 25
 AGENT_MAX_SUPPLIERS = 10
 AGENT_RECURSION_LIMIT = 200
 
-# LLM Performance Configuration
-MAX_TOKENS = 16384
+# LLM Performance Configuration  
+MAX_TOKENS = 4096  # Further reduced to prevent context overflow
 REQUEST_TIMEOUT = 300
 MAX_RETRIES = 3 

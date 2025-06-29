@@ -8,6 +8,7 @@ from .tools import (
     web_search,
     query_mongodb,
     finalize_supplier_search,
+    validate_supplier_data,
 )
 from .prompts import get_supply_chain_agent_prompt
 
@@ -21,7 +22,7 @@ def supply_chain_agent(chat_history=None) -> CompiledStateGraph:
     """
     logger.info("Creating supply chain agent")
     logger.debug(
-        "Initializing tools: web_extract, web_search, query_mongodb, finalize_supplier_search"
+        "Initializing tools: web_extract, web_search, query_mongodb, finalize_supplier_search, validate_supplier_data"
     )
 
     tools = [
@@ -29,6 +30,7 @@ def supply_chain_agent(chat_history=None) -> CompiledStateGraph:
         web_search,
         query_mongodb,
         finalize_supplier_search,
+        validate_supplier_data,
     ]
 
     logger.info(f"Loaded {len(tools)} tools for supply chain agent")

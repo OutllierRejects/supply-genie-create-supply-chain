@@ -10,6 +10,12 @@ from .config import MAX_QUERY_LENGTH, MAX_EXTRACT_URLS, DEFAULT_REMAINING_STEPS
 logger = get_logger()
 
 
+class Contact(BaseModel):
+    website: str = Field(description="Company website URL")
+    phone: str = Field(description="Company phone number")
+    email: str = Field(description="Company email address")
+
+
 class Supplier(BaseModel):
     company_name: str = Field(description="Name of the company")
     location: str = Field(description="Location of the company")
@@ -24,7 +30,9 @@ class Supplier(BaseModel):
     response_time: str = Field(
         description="Response time in hours or days (e.g., '2-4 hours', '1-2 days')"
     )
-    contact: Optional[str] = Field(default=None, description="Contact information")
+    stock: str = Field(description="Stock availability (e.g., '10 units available')")
+    time_zone: str = Field(description="Company timezone (e.g., 'GMT+8 (China Standard Time)')")
+    contact: Contact = Field(description="Contact information")
 
     @field_validator("rating")
     def validate_rating(cls, v):
@@ -132,6 +140,12 @@ class WebExtractQuery(BaseModel):
                 f"Large number of URLs provided for extraction: {len(v)} (max recommended: {MAX_EXTRACT_URLS})"
             )
         return v
+
+
+class SupplierDataValidationQuery(BaseModel):
+    supplier_data: dict = Field(
+        description="Dictionary containing supplier information to validate for completeness and accuracy."
+    )
 
 
 class SupplyChainAgentState(BaseModel):

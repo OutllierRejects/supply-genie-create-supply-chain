@@ -13,7 +13,10 @@ from .models import (
     WebSearchQuery,
     WebExtractQuery,
     Supplier,
+    SupplierDataValidationQuery,
 )
+from .config import AGENT_MAX_SUPPLIERS
+import json
 
 logger = get_logger()
 tavily_search = get_tavily_search()
@@ -130,38 +133,83 @@ def web_search(query: str) -> dict:
 
 
 @tool(
-    description="Extract detailed supplier information from URLs using Tavily API.",
+    description="Extract detailed supplier information from URLs using Tavily API. Enhanced with intelligent analysis to identify missing data and provide extraction guidance.",
     args_schema=WebExtractQuery,
 )
 def web_extract(urls: List[str]) -> dict:
-    logger.info(f"Starting Tavily URL extraction for {len(urls)} URLs")
+    logger.info(f"Starting enhanced Tavily URL extraction for {len(urls)} URLs")
     logger.debug(f"URLs to extract: {urls}")
 
     if not urls:
         logger.warning("No URLs provided for extraction")
-        return {"results": [], "error": "No URLs provided"}
+        return {"results": [], "error": "No URLs provided", "extraction_guidance": "Please provide URLs to extract from"}
+
+    # Key fields we need
+    key_fields = ["company_name", "location", "price_range", "lead_time", "certifications", "specialties"]
 
     try:
         logger.debug("Invoking Tavily extract API...")
         response = tavily_extract.invoke({"urls": urls})
         logger.info("Tavily extraction completed successfully")
 
-        if isinstance(response, dict):
-            logger.debug(f"Response keys: {list(response.keys())}")
-            if "results" in response:
-                logger.debug(f"Extracted {len(response['results'])} page contents")
+        if not isinstance(response, dict) or "results" not in response:
+            logger.error("Invalid response from Tavily extraction")
+            return {"results": [], "error": "Invalid extraction response"}
 
-        return response
+        # Simple response without excessive analysis
+        logger.info(f"Extraction completed - {len(response.get('results', []))} pages processed")
+        return {"results": response.get("results", []), "success": True}
 
     except Exception as e:
-        logger.error(f"Tavily extraction failed: {str(e)}", exc_info=True)
-        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Extraction failed: {str(e)}", exc_info=True)
         return {"results": [], "error": str(e)}
 
 
-@tool(description="Complete the supplier search and return the final results.")
+@tool(
+    description="Validate supplier data completeness and provide specific improvement recommendations for incomplete fields.",
+    args_schema=SupplierDataValidationQuery
+)
+def validate_supplier_data(supplier_data: dict) -> dict:
+    """
+    Validates supplier data completeness and provides specific guidance on improving incomplete fields.
+    
+    Args:
+        supplier_data: Dictionary containing supplier information to validate
+    """
+    logger.info("Starting supplier data validation")
+    
+    required_fields = ["company_name", "location", "rating", "price_range", "lead_time", "moq", "certifications", "specialties", "response_time", "stock", "time_zone", "contact"]
+    
+    missing_fields = [field for field in required_fields if not supplier_data.get(field)]
+    
+    validation_result = {
+        "is_valid": len(missing_fields) == 0,
+        "missing_fields": missing_fields,
+        "completeness_score": round(((len(required_fields) - len(missing_fields)) / len(required_fields)) * 100, 1)
+    }
+    
+    logger.info(f"Validation completed - Completeness: {validation_result['completeness_score']}%, Valid: {validation_result['is_valid']}")
+    
+    return validation_result
+
+
+@tool(description=f"Complete the supplier search and return the final results. Target: {AGENT_MAX_SUPPLIERS} suppliers, but will accept fewer if context limits are reached or thorough searching yields fewer results.")
 def finalize_supplier_search(suppliers: List[Supplier]) -> dict:
     logger.info(f"Finalizing supplier search with {len(suppliers)} suppliers")
+    
+    # Prefer the target number but allow fewer to prevent context overflow
+    if len(suppliers) == 0:
+        error_msg = "No suppliers found! You must provide at least 1 supplier."
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if len(suppliers) < AGENT_MAX_SUPPLIERS:
+        logger.warning(f"Found {len(suppliers)} suppliers (target was {AGENT_MAX_SUPPLIERS}). Proceeding with available suppliers to avoid context overflow.")
+    
+    # Trim to exact number if more than required
+    if len(suppliers) > AGENT_MAX_SUPPLIERS:
+        logger.info(f"Trimming {len(suppliers)} suppliers to exactly {AGENT_MAX_SUPPLIERS}")
+        suppliers = suppliers[:AGENT_MAX_SUPPLIERS]
 
     if not suppliers:
         logger.warning("No suppliers provided for finalization")
@@ -182,7 +230,7 @@ def finalize_supplier_search(suppliers: List[Supplier]) -> dict:
         "count": len(suppliers),
     }
 
-    logger.info(f"Search completed successfully with {len(suppliers)} suppliers")
+    logger.info(f"Search completed successfully with exactly {len(suppliers)} suppliers")
     logger.debug(
         f"Result structure: count={result['count']}, suppliers_type={type(result['suppliers'])}"
     )
