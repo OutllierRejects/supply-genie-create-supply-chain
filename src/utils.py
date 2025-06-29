@@ -7,6 +7,9 @@ from .config import (
     MODEL_NAME,
     LLM_TEMPERATURE,
     TAVILY_API_KEY,
+    MAX_TOKENS,
+    REQUEST_TIMEOUT,
+    MAX_RETRIES,
 )
 
 from langchain_openai import ChatOpenAI
@@ -32,6 +35,9 @@ def get_llm() -> ChatOpenAI:
         temperature=LLM_TEMPERATURE,
         model=MODEL_NAME,
         api_key=OPENAI_API_KEY,
+        max_tokens=MAX_TOKENS,
+        timeout=REQUEST_TIMEOUT,
+        max_retries=MAX_RETRIES,
     )
 
 
