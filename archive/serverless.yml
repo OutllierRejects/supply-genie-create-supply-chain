@@ -4,11 +4,16 @@ frameworkVersion: "4"
 
 provider:
   name: aws
-  runtime: python3.13
+  runtime: python3.12
   region: us-east-1
   memorySize: 256
-  architecture: arm64
-  timeout: 30
+  architecture: x86_64
+  timeout: 300
+  environment:
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    TAVILY_API_KEY: ${env:TAVILY_API_KEY}
+    MONGO_URI: ${env:MONGO_URI}
+    MODEL_NAME: ${env:MODEL_NAME}
 
 plugins:
   - serverless-uv-requirements
@@ -21,7 +26,9 @@ custom:
     source: pyproject.toml
     output: requirements.txt
   pythonRequirements:
-    dockerizePip: non-linux
+    slim: false
+    strip: false
+    dockerizePip: false
   serverless-offline:
     httpPort: 3000
     host: localhost
@@ -38,3 +45,15 @@ functions:
           path: /
           method: ANY
           cors: true
+
+package:
+  patterns:
+    - 'src/**'
+    - 'requirements.txt'
+    - '!**/__pycache__/**'
+    - '!**/*.pyc'
+    - '!.venv/**'
+    - '!node_modules/**'
+    - '!.ruff_cache/**'
+    - '!archive/**'
+    - '!notebooks/**'

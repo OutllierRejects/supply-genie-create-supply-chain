@@ -1,9 +1,11 @@
 from fastapi import FastAPI
 from .models import AgentConfig, SupplierExplorationAgentResponse
-from mangum import Mangum
 import asyncio
-from .graph import get_graph, prepare_state, extract_final_response
-from .utils import get_logger
+from .agents import supply_chain_agent
+from .utils import get_logger, save_suppliers_to_mongodb
+from langchain_core.messages import HumanMessage
+from langchain_core.runnables import RunnableConfig
+from .config import AGENT_RECURSION_LIMIT
 
 logger = get_logger()
 app = FastAPI()
@@ -11,6 +13,7 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
+    logger.info("Health check endpoint accessed")
     return {"message": "Hello World"}
 
 
@@ -19,25 +22,95 @@ async def root():
     response_model=SupplierExplorationAgentResponse,
 )
 async def get_recommendations(requirements: AgentConfig):
-    # Build a plain dict of all inputs (query + chat_history)
-    input_payload = requirements.dict(exclude_none=True)
-    logger.info(f"Input payload: {input_payload}")
-
-    # Prepare the state to match GraphState schema
-    prepared_state = prepare_state(input_payload)
-    logger.info(f"Prepared state: {prepared_state}")
-
-    # Invoke the graph with the properly formatted state and increased recursion limit
-    raw_output = await asyncio.to_thread(
-        get_graph().invoke, prepared_state, {"recursion_limit": 10}
+    logger.info("=== NEW RECOMMENDATION REQUEST ===")
+    logger.info(
+        f"Received recommendation request for query: {requirements.query[:100]}..."
     )
-    logger.info(f"Raw output from graph: {raw_output}")
+    logger.debug(f"Full query: {requirements.query}")
+    logger.debug(
+        f"Chat history length: {len(requirements.chat_history) if requirements.chat_history else 0}"
+    )
 
-    # Extract the final response properly
-    final_response = extract_final_response(raw_output)
-    logger.info(f"Final response: {final_response}")
+    # Build input payload with proper message structure and state tracking
+    input_payload = {
+        "query": requirements.query,
+        "chat_history": requirements.chat_history,
+        "messages": [HumanMessage(content=requirements.query)],
+    }
+    logger.info("Built input payload for agent")
+    logger.debug(f"Payload keys: {list(input_payload.keys())}")
+    logger.debug(f"Messages count: {len(input_payload['messages'])}")
 
-    return final_response
+    try:
+        logger.info("--- CREATING SUPPLY CHAIN AGENT ---")
+        # Create and invoke the supply chain agent
+        agent = supply_chain_agent()
+        logger.info("Supply chain agent created successfully")
 
+        # Configure agent with recursion limit
+        agent = agent.with_config(recursion_limit=AGENT_RECURSION_LIMIT)
+        logger.info(f"Agent configured with recursion limit: {AGENT_RECURSION_LIMIT}")
 
-handler = Mangum(app)
+        # Invoke the agent with configuration
+        logger.info("--- INVOKING SUPPLY CHAIN AGENT ---")
+        logger.info(
+            f"Starting supply chain agent invocation with recursion limit: {AGENT_RECURSION_LIMIT}"
+        )
+
+        # Create runnable config for additional control
+        config = RunnableConfig(recursion_limit=AGENT_RECURSION_LIMIT)
+        raw_output = await asyncio.to_thread(agent.invoke, input_payload, config=config)
+        logger.info("Agent invocation completed")
+        logger.debug(
+            f"Raw output keys: {list(raw_output.keys()) if isinstance(raw_output, dict) else 'Not a dict'}"
+        )
+        logger.debug(f"Raw output type: {type(raw_output)}")
+
+        logger.info("--- PROCESSING AGENT RESPONSE ---")
+        # Check if we have a structured response
+        if isinstance(raw_output, dict) and "structured_response" in raw_output:
+            logger.debug("Found structured_response in raw output")
+            structured_response = raw_output["structured_response"]
+            if (
+                hasattr(structured_response, "suppliers")
+                and structured_response.suppliers
+            ):
+                logger.info(
+                    f"Found response with {len(structured_response.suppliers)} suppliers"
+                )
+                logger.debug("Saving suppliers to MongoDB...")
+                # Save suppliers to MongoDB after getting response
+                save_result = save_suppliers_to_mongodb(structured_response.suppliers)
+                logger.info(f"MongoDB save result: {save_result}")
+                logger.info("=== REQUEST COMPLETED SUCCESSFULLY ===")
+                return structured_response
+            elif (
+                isinstance(structured_response, dict)
+                and "suppliers" in structured_response
+            ):
+                supplier_count = len(structured_response.get("suppliers", []))
+                logger.info(f"Found dict response with {supplier_count} suppliers")
+                logger.debug("Saving suppliers to MongoDB...")
+                # Save suppliers to MongoDB after getting response
+                save_result = save_suppliers_to_mongodb(
+                    structured_response["suppliers"]
+                )
+                logger.info(f"MongoDB save result: {save_result}")
+                logger.info("=== REQUEST COMPLETED SUCCESSFULLY ===")
+                return SupplierExplorationAgentResponse(
+                    suppliers=structured_response["suppliers"]
+                )
+
+        # Return empty response if no results found
+        logger.warning("No supplier results found in agent response")
+        logger.debug(f"Raw output structure: {raw_output}")
+        logger.warning("=== REQUEST COMPLETED WITH NO RESULTS ===")
+        return SupplierExplorationAgentResponse(suppliers=[])
+
+    except Exception as e:
+        logger.error(
+            f"Error processing recommendation request: {str(e)}", exc_info=True
+        )
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error("=== REQUEST FAILED ===")
+        return SupplierExplorationAgentResponse(suppliers=[])
