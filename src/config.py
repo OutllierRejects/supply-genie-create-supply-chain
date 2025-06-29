@@ -7,10 +7,11 @@ load_dotenv()
 
 # API Keys and Database
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 MONGO_URI = os.getenv("MONGO_URI")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o")
-LLM_TEMPERATURE = 0.1
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.5-pro")
+LLM_TEMPERATURE = 0.2  # Slightly higher for Gemini's creative reasoning
 
 # MongoDB Configuration
 SEARCH_INDEX_NAME = "supplier_search_index"
@@ -23,7 +24,7 @@ DEFAULT_REMAINING_STEPS = 25
 AGENT_MAX_SUPPLIERS = 10
 AGENT_RECURSION_LIMIT = 200
 
-# LLM Performance Configuration  
-MAX_TOKENS = 4096  # Further reduced to prevent context overflow
+# LLM Performance Configuration - Optimized for Gemini 2.5 Pro
+MAX_TOKENS = 8192  # Increased for Gemini 2.5 Pro's better context handling  
 REQUEST_TIMEOUT = 300
 MAX_RETRIES = 3 

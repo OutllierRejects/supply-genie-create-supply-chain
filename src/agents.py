@@ -2,7 +2,7 @@ from langgraph.prebuilt import create_react_agent
 from .utils import get_logger, get_llm
 from .models import SupplierExplorationAgentResponse
 from langgraph.graph.state import CompiledStateGraph
-from .config import AGENT_MAX_SUPPLIERS
+from .config import AGENT_MAX_SUPPLIERS, MODEL_NAME
 from .tools import (
     web_extract,
     web_search,
@@ -52,7 +52,7 @@ def supply_chain_agent(chat_history=None) -> CompiledStateGraph:
         )
         logger.info("Successfully created supply chain agent with ReAct framework")
         logger.debug(
-            f"Agent configuration: model={model.model_name}, tools={len(tools)}, response_format=SupplierExplorationAgentResponse"
+            f"Agent configuration: model={MODEL_NAME}, tools={len(tools)}, response_format=SupplierExplorationAgentResponse"
         )
         return agent
     except Exception as e:

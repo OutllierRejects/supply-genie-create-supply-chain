@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from .models import AgentConfig, SupplierExplorationAgentResponse
 import asyncio
 from .agents import supply_chain_agent
-from .utils import get_logger, save_suppliers_to_mongodb
+from .utils import get_logger, save_suppliers_to_mongodb, save_suppliers_to_mongodb_async
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from .config import AGENT_RECURSION_LIMIT
@@ -86,10 +86,10 @@ async def get_recommendations(requirements: AgentConfig):
                 logger.info(
                     f"Found response with {len(structured_response.suppliers)} suppliers"
                 )
-                logger.debug("Saving suppliers to MongoDB...")
-                # Save suppliers to MongoDB after getting response
-                save_result = save_suppliers_to_mongodb(structured_response.suppliers)
-                logger.info(f"MongoDB save result: {save_result}")
+                logger.debug("Saving suppliers to MongoDB (async)...")
+                # Save suppliers to MongoDB after getting response - using async version
+                save_result = await save_suppliers_to_mongodb_async(structured_response.suppliers)
+                logger.info(f"MongoDB save result (async): {save_result}")
                 logger.info("=== REQUEST COMPLETED SUCCESSFULLY ===")
                 return structured_response
             elif (

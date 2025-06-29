@@ -16,7 +16,6 @@ from .models import (
     SupplierDataValidationQuery,
 )
 from .config import AGENT_MAX_SUPPLIERS
-import json
 
 logger = get_logger()
 tavily_search = get_tavily_search()
